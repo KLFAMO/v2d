@@ -53,6 +53,7 @@ SPI_HandleTypeDef hspi4;
 SPI_HandleTypeDef hspi5;
 
 TIM_HandleTypeDef htim7;
+TIM_HandleTypeDef htim13;
 
 UART_HandleTypeDef huart3;
 
@@ -87,6 +88,8 @@ int need_change_sign = 0;
 void set_dac_mos(double dac);
 void send_single_adc_cnv();
 void send_adc_cnvs(int n);
+void SendBits(uint32_t data);
+void HAL_Delay_us(uint16_t us);
 
 /* USER CODE END PV */
 
@@ -99,6 +102,7 @@ static void MX_TIM7_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_SPI4_Init(void);
 static void MX_SPI5_Init(void);
+static void MX_TIM13_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -155,6 +159,7 @@ int main(void)
   MX_SPI2_Init();
   MX_SPI4_Init();
   MX_SPI5_Init();
+  MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
 
   tcp_server_init();
@@ -167,6 +172,7 @@ int main(void)
   HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
 
   HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start(&htim13);
 
   /* USER CODE END 2 */
 
@@ -402,9 +408,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 80;
+  htim7.Init.Prescaler = 79;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 300;
+  htim7.Init.Period = 1000;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
@@ -419,6 +425,37 @@ static void MX_TIM7_Init(void)
   /* USER CODE BEGIN TIM7_Init 2 */
 
   /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
+  * @brief TIM13 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM13_Init(void)
+{
+
+  /* USER CODE BEGIN TIM13_Init 0 */
+
+  /* USER CODE END TIM13_Init 0 */
+
+  /* USER CODE BEGIN TIM13_Init 1 */
+
+  /* USER CODE END TIM13_Init 1 */
+  htim13.Instance = TIM13;
+  htim13.Init.Prescaler = 79;
+  htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim13.Init.Period = 65535;
+  htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim13.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim13) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM13_Init 2 */
+
+  /* USER CODE END TIM13_Init 2 */
 
 }
 
@@ -505,7 +542,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(MOS_LDAC_GPIO_Port, MOS_LDAC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ADC_CNV_Pin|L2_LEFT_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, TTL_OUT_Pin|ADC_CNV_Pin|L2_LEFT_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : SET_BUSY_Pin */
   GPIO_InitStruct.Pin = SET_BUSY_Pin;
@@ -561,8 +598,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(MOS_LDAC_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ADC_CNV_Pin L2_LEFT_Pin */
-  GPIO_InitStruct.Pin = ADC_CNV_Pin|L2_LEFT_Pin;
+  /*Configure GPIO pins : TTL_OUT_Pin ADC_CNV_Pin L2_LEFT_Pin */
+  GPIO_InitStruct.Pin = TTL_OUT_Pin|ADC_CNV_Pin|L2_LEFT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -706,6 +743,27 @@ void set_dac_mos(double dac){
 	HAL_GPIO_WritePin(MOS_LDAC_GPIO_Port, MOS_LDAC_Pin, GPIO_PIN_RESET);
 }
 
+void SendBits(uint32_t data){
+	for (int i = 0; i<32; i++){
+		if ((data >> i) & 0x1){
+			HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
+		}
+		else{
+			HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
+		}
+		HAL_Delay_us(10);
+	}
+	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
+}
+
+void HAL_Delay_us(uint16_t us)
+{
+//    __HAL_TIM_SET_COUNTER(&htim13, 0);
+//    while (__HAL_TIM_GET_COUNTER(&htim13) < us);
+
+	for (uint32_t i = 0; i < us * 8; i++) {}
+}
+
 /* USER CODE END 4 */
 
 /* MPU Configuration */
@@ -767,94 +825,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM7) {
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, SET);
 
-	  if (par.mode.val == 0) { // switch off current and reset pi values
-		  set_dac_mos(0);
-		  err = 0;
-		  acc_err = 0;
-		  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, RESET);
-		  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, RESET);
-	  }
-	  else if (par.mode.val == 1 || par.mode.val == 2) {
-		  send_adc_cnvs(100);
-		  lem_A = get_lem_A();
-		  last_set_A = set_A;
-		  if (par.mode.val == 1){
-			  in_set_v = get_set_V()*10;
-			  set_A = in_set_v * 10; // 1A_lem = 0.1V_set
-		  }
-		  if (par.mode.val == 2){
-			  set_A = par.cur.val;
-		  }
+
+		  send_adc_cnvs(10);
+		  in_set_v = get_set_V()*10;
 		  par.adc.ch1.volt.val = in_set_v;
-		  par.adc.ch2.volt.val = lem_A;
 
-		  //increase gain I if lower current (because of gate characteristics of transistor)
-		  if (lem_A < 1 && lem_A > -1){
-			  I = par.I.val *1.6;
-		  } else if (lem_A < 3 && lem_A > -3){
-			  I = par.I.val *1.3;
-		  } else {
-			  I = par.I.val;
-		  }
-
-		  if ( signbit(set_A) != signbit(lem_A) ){
-			  if (fabs(lem_A) > 0.01){
-				  set_A = 0;
-				  need_change_sign = 1;
-			  }else{
-				  if (need_change_sign){
-					  if (set_A <0){
-						  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, RESET);
-						  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, SET);
-					  }else{
-						  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, SET);
-						  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, RESET);
-					  }
-					  need_change_sign = 0;
-				  }
-			  }
-		  }
-
-		  err = lem_A - set_A;
-
-		  // error limit for smooth current changes
-		  if (err > par.ermax.val){
-			  err = par.ermax.val;
-		  }
-		  if (err < -par.ermax.val){
-			  err = -par.ermax.val;
-		  }
-
-		  acc_err = acc_err + err;
-
-		  // error limit for smooth current changes
-		  if (acc_err > par.aermax.val){acc_err = par.aermax.val;}
-		  if (acc_err < -par.aermax.val){acc_err = -par.aermax.val;}
-
-		  pid_out = par.goff.val + acc_err*(I);
-		  if (pid_out > 9 ){
-			  pid_out = 9;
-		  }
-		  if (pid_out < 0 ){
-			  pid_out = 0;
-		  }
-
-		  set_dac_mos(pid_out);
-	//	  set_dac_mos(par.dac.ch1.volt.val);
-
-	//	  HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
-
-		  if (par.dir.val>0.5){
-			  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, RESET);
-			  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, SET);
-		  } else if (par.dir.val<-0.5){
-			  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, SET);
-			  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, RESET);
-		  } else{
-			  HAL_GPIO_WritePin(L2_LEFT_GPIO_Port, L2_LEFT_Pin, RESET);
-			  HAL_GPIO_WritePin(L2_RIGHT_GPIO_Port, L2_RIGHT_Pin, RESET);
-		  }
-	  }
+		  HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
+		  HAL_Delay_us(10);
+		  HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
+		  HAL_Delay_us(10);
+		  SendBits(174765);
 
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, RESET);
     }

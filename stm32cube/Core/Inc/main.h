@@ -89,6 +89,8 @@ void Error_Handler(void);
 #define LEM_OK_GPIO_Port GPIOD
 #define MOS_LDAC_Pin GPIO_PIN_2
 #define MOS_LDAC_GPIO_Port GPIOG
+#define TTL_OUT_Pin GPIO_PIN_1
+#define TTL_OUT_GPIO_Port GPIOD
 #define SET_SCK_Pin GPIO_PIN_3
 #define SET_SCK_GPIO_Port GPIOD
 #define ADC_CNV_Pin GPIO_PIN_4
