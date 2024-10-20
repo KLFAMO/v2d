@@ -744,6 +744,12 @@ void set_dac_mos(double dac){
 }
 
 void SendBits(uint32_t data){
+//	uint16_t d_us =
+	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
+	HAL_Delay_us(20);
+	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
+	HAL_Delay_us(20);
+
 	for (int i = 0; i<32; i++){
 		if ((data >> i) & 0x1){
 			HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
@@ -751,17 +757,14 @@ void SendBits(uint32_t data){
 		else{
 			HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
 		}
-		HAL_Delay_us(10);
+		HAL_Delay_us(20);
 	}
 	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
 }
 
 void HAL_Delay_us(uint16_t us)
 {
-//    __HAL_TIM_SET_COUNTER(&htim13, 0);
-//    while (__HAL_TIM_GET_COUNTER(&htim13) < us);
-
-	for (uint32_t i = 0; i < us * 8; i++) {}
+	for (uint32_t i = 0; i < us * 9; i++) {}
 }
 
 /* USER CODE END 4 */
@@ -826,15 +829,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, SET);
 
 
-		  send_adc_cnvs(10);
-		  in_set_v = get_set_V()*10;
-		  par.adc.ch1.volt.val = in_set_v;
+	  send_adc_cnvs(10);
+	  in_set_v = get_set_V()*10;
+	  par.adc.ch1.volt.val = in_set_v;
+	  if (par.mode.val == 1){
+		  in_set_v = par.setv.val;
+	  }
 
-		  HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
-		  HAL_Delay_us(10);
-		  HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
-		  HAL_Delay_us(10);
-		  SendBits(174765);
+	  SendBits((int)(in_set_v*1e6));
 
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, RESET);
     }

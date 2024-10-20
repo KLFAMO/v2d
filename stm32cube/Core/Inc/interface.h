@@ -71,6 +71,7 @@ typedef struct {
     value ermax;
     value aermax;
     value goff;
+    value setv;
 } parameters;
 
 pointer getPointer(pointer,char * );
