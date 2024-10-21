@@ -111,7 +111,7 @@ void tcp_server_init(void)
 
 	/* 2. bind _pcb to port 7 ( protocol) */
 	ip_addr_t myIPADDR;
-	IP_ADDR4(&myIPADDR, 192, 168, 3, 111);
+	IP_ADDR4(&myIPADDR, 192, 168, 3, 20);
 	err = tcp_bind(tpcb, &myIPADDR, 10);
 
 	if (err == ERR_OK)

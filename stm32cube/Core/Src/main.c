@@ -88,7 +88,7 @@ int need_change_sign = 0;
 void set_dac_mos(double dac);
 void send_single_adc_cnv();
 void send_adc_cnvs(int n);
-void SendBits(uint32_t data);
+void SendBits(int32_t data);
 void HAL_Delay_us(uint16_t us);
 
 /* USER CODE END PV */
@@ -743,7 +743,7 @@ void set_dac_mos(double dac){
 	HAL_GPIO_WritePin(MOS_LDAC_GPIO_Port, MOS_LDAC_Pin, GPIO_PIN_RESET);
 }
 
-void SendBits(uint32_t data){
+void SendBits(int32_t data){
 //	uint16_t d_us =
 	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
 	HAL_Delay_us(20);
@@ -836,7 +836,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		  in_set_v = par.setv.val;
 	  }
 
-	  SendBits((int)(in_set_v*1e6));
+	  SendBits((int32_t)(in_set_v*1e6));
 
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, RESET);
     }
