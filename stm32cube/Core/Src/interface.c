@@ -49,6 +49,8 @@ pointer getPointer(pointer p, char *s)
 	  pout = (pointer){.p = (void *)&(ptmp->dcur), .type = "value"};
     if (strcmp(s, "SETV") == 0)
    	  pout = (pointer){.p = (void *)&(ptmp->setv), .type = "value"};
+    if (strcmp(s, "TS") == 0)
+      pout = (pointer){.p = (void *)&(ptmp->ts), .type = "value"};
   }
 
   if (strcmp(p.type, "adc") == 0)
@@ -147,7 +149,7 @@ void setParam(value *p, double val)
 void initInterface(void)
 {
   par.I = (value){.val = -0.04, .min = -0.5, .max = 0};
-  par.setv = (value){.val = 0, .min = -10, .max = 10};
+  par.setv = (value){.val = 0, .min = 0, .max = 100000000};
   par.dir = (value){.val = 0, .min = -1, .max = 1};
   par.cur = (value){.val = 0, .min = 0, .max = 100};
   par.dcur = (value){.val = 20, .min = 0.001, .max = 20};
@@ -160,6 +162,7 @@ void initInterface(void)
   par.adc.ch1.coron = (value){.val = 0, .min = 0, .max = 1};
   par.adc.ch1.corfactor = (value){.val = 1, .min = 0, .max = 100};
   par.dac.ch1.volt = (value){.val = 0, .min = 0, .max = 5};
+  par.ts = (value){.val = 0, .min = 0, .max = 9999999999999};
 }
 
 /*------------------------*/

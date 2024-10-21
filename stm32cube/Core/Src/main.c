@@ -88,8 +88,10 @@ int need_change_sign = 0;
 void set_dac_mos(double dac);
 void send_single_adc_cnv();
 void send_adc_cnvs(int n);
-void SendBits(int32_t data);
+void SendBits(uint32_t data);
 void HAL_Delay_us(uint16_t us);
+uint32_t get_adc_set_raw();
+uint32_t code_to_send(uint32_t);
 
 /* USER CODE END PV */
 
@@ -671,21 +673,41 @@ double get_adc_lem(){
 
 }
 
-double get_adc_set(){
+uint32_t get_adc_set_raw(){
 
+//	char msg[100];
+	uint32_t code = 0x000000;
+
+	while (HAL_GPIO_ReadPin(SET_BUSY_GPIO_Port, SET_BUSY_Pin) == GPIO_PIN_SET) {}
+
+	HAL_GPIO_WritePin(SET_RDL_GPIO_Port, SET_RDL_Pin, GPIO_PIN_RESET);
+
+	HAL_SPI_Receive(&hspi2, (uint8_t*)spi_buf_set, 3, 100);
+	HAL_GPIO_WritePin(SET_RDL_GPIO_Port, SET_RDL_Pin, GPIO_PIN_SET);
+
+	((uint8_t *)&code)[2] = (unsigned int)spi_buf_set[0];
+	((uint8_t *)&code)[1] = (unsigned int)spi_buf_set[1];
+	((uint8_t *)&code)[0] = (unsigned int)spi_buf_set[2];
+
+	return code;
+}
+
+uint32_t code_to_send(uint32_t code){
+	uint32_t out = 0;
+	if(code >= HALF_CODE){
+		out = (2*HALF_CODE - code) << 1 | 0b1;
+	}else{
+		out = (code) << 1 ;
+	}
+	return out;
+}
+
+double get_adc_set(){
 	char msg[100];
 	int adc_val_int=0;
-//	sprintf(msg, "get_adc_set start\r\n");
-//	HAL_UART_Transmit(&huart3, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
 
 	uint32_t code = 0x000000;
 	double adc_val;
-
-//	HAL_GPIO_WritePin(LEM_RDL_GPIO_Port, LEM_RDL_Pin, GPIO_PIN_RESET);
-
-//	for (int i = 0; i < 2; i++) {
-//	        __NOP();
-//	    }
 
 	while (HAL_GPIO_ReadPin(SET_BUSY_GPIO_Port, SET_BUSY_Pin) == GPIO_PIN_SET) {
 	    }
@@ -743,14 +765,14 @@ void set_dac_mos(double dac){
 	HAL_GPIO_WritePin(MOS_LDAC_GPIO_Port, MOS_LDAC_Pin, GPIO_PIN_RESET);
 }
 
-void SendBits(int32_t data){
+void SendBits(uint32_t data){
 //	uint16_t d_us =
 	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
 	HAL_Delay_us(20);
 	HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_RESET);
 	HAL_Delay_us(20);
 
-	for (int i = 0; i<32; i++){
+	for (int i = 0; i<25; i++){
 		if ((data >> i) & 0x1){
 			HAL_GPIO_WritePin(TTL_OUT_GPIO_Port, TTL_OUT_Pin, GPIO_PIN_SET);
 		}
@@ -826,17 +848,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM7) {
+	  uint32_t to_send = 0;
+	  uint32_t code = 0;
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, SET);
 
-
 	  send_adc_cnvs(10);
-	  in_set_v = get_set_V()*10;
-	  par.adc.ch1.volt.val = in_set_v;
 	  if (par.mode.val == 1){
-		  in_set_v = par.setv.val;
+		  code = (uint32_t)par.setv.val;
+	  }else{
+		  code = get_adc_set_raw();
 	  }
-
-	  SendBits((int32_t)(in_set_v*1e6));
+	  par.setv.val = code;
+	  par.ts.val = code_to_send(code);
+	  SendBits(par.ts.val);
 
 	  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, RESET);
     }
