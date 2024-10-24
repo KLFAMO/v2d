@@ -73,6 +73,7 @@ typedef struct {
     value goff;
     value setv;
     value ts;
+    value neg;
 } parameters;
 
 pointer getPointer(pointer,char * );

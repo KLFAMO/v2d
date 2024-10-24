@@ -695,9 +695,12 @@ uint32_t get_adc_set_raw(){
 uint32_t code_to_send(uint32_t code){
 	uint32_t out = 0;
 	if(code >= HALF_CODE){
-		out = (2*HALF_CODE - code) << 1 | 0b1;
+		out = (~code) << 1 | 0b1;
 	}else{
 		out = (code) << 1 ;
+	}
+	if (par.neg.val==1){
+		out = out | 0b1;
 	}
 	return out;
 }
@@ -854,7 +857,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	  send_adc_cnvs(10);
 	  if (par.mode.val == 1){
-		  code = (uint32_t)par.setv.val;
+		  code = (int32_t)par.setv.val;
 	  }else{
 		  code = get_adc_set_raw();
 	  }
